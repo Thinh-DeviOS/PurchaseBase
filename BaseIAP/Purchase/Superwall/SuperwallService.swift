@@ -24,43 +24,38 @@ class SuperwallService {
         #endif
     }
     
-    func registerSuperwall(with placement: SuperwallPlacement, params: [SuperwallParameter: Any]? = nil, completion: (() -> Void)? = nil) {
+    func registerSuperwall(with placement: SuperwallPlacement, params: [SuperwallParameter: Any]? = nil) async {
         guard Superwall.shared.configurationStatus == .configured else { return }
         let handler = PaywallPresentationHandler()
-        handler.onSkip { skipReason in
-            switch skipReason {
-            case .userIsSubscribed:
-                self.notifiCenter.post(name: .superwallPurchaseDidUpdate, object: true)
-            default: break
+        await withCheckedContinuation { continuation in
+            handler.onSkip { skipReason in
+                if skipReason == .userIsSubscribed {
+                    self.notifiCenter.post(name: .superwallPurchaseDidUpdate, object: true)
+                }
+                Logger.log("Log-Superwall Handler on Skip: \(skipReason)")
+                continuation.resume()
             }
-            self.handleEvent(log: "Log-Superwall Handler on Skip: \(skipReason)", completion: completion)
-        }
-        handler.onError { error in
-            self.handleEvent(log: "Log-Superwall Handler Error: \(error.localizedDescription)", completion: completion)
-        }
-        handler.onPresent { _ in
-            self.handleEvent(log: "Log-Superwall on Present", completion: completion)
-        }
-        handler.onDismiss { _ in
-            self.handleEvent(log: "Log-Superwall on Dismiss", completion: completion)
-        }
-        
-        // register
-        var resultParams: [String: Any]?
-        if let params, !params.isEmpty {
-            resultParams = [:]
-            for param in params {
-                resultParams?[param.key.rawValue] = param.value
+            handler.onError { error in
+                Logger.log("Log-Superwall Handler Error: \(error.localizedDescription)")
+                continuation.resume()
             }
-        }
-        
-        Superwall.shared.register(event: placement.rawValue, params: resultParams, handler: handler)
-    }
-    
-    private func handleEvent(log: String, completion: (() -> Void)?) {
-        Logger.log(log)
-        DispatchQueue.main.async {
-            completion?()
+            handler.onPresent { _ in
+                Logger.log("Log-Superwall on Present")
+                continuation.resume()
+            }
+            handler.onDismiss { _ in
+                Logger.log("Log-Superwall on Dismiss")
+                continuation.resume()
+            }
+            // register
+            var resultParams: [String: Any]?
+            if let params, !params.isEmpty {
+                resultParams = params.reduce(into: [:]) { result, param in
+                    result[param.key.rawValue] = param.value
+                }
+            }
+            
+            Superwall.shared.register(event: placement.rawValue, params: resultParams, handler: handler)
         }
     }
 }
@@ -131,25 +126,29 @@ extension SuperwallService: SuperwallDelegate {
         let productId = product.productIdentifier
         let price = NSDecimalNumber(decimal: product.price).doubleValue
         let regionIdentifier = product.regionCode
-        let purchaseDate = transaction?.transactionDate
+        let transDate = transaction?.transactionDate
         if product.subscriptionPeriod == nil {
-            AdjustManager.shared.loggerInAppPurchase(
+            let logger = LoggerInAppPurchase(
+                packagetype: .lifetime,
                 transactionId: transactionId,
-                price: price,
                 productId: productId,
-                currency: currencyCode,
+                price: price,
+                currency: currencyCode ?? "",
                 region: regionIdentifier,
                 transactionDate: transDate
             )
+            notifiCenter.post(name: .updateInAppTracking, object: logger)
         } else {
-            AdjustManager.shared.loggerInAppSubscription(
+            let logger = LoggerInAppPurchase(
+                packagetype: .annual,
                 transactionId: transactionId,
-                price: price,
                 productId: productId,
-                currency: currencyCode,
+                price: price,
+                currency: currencyCode ?? "",
                 region: regionIdentifier,
                 transactionDate: transDate
             )
+            notifiCenter.post(name: .updateInAppTracking, object: logger)
         }
     }
 }

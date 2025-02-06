@@ -10,6 +10,7 @@ import UIKit
 extension Notification.Name {
     static let revenueCastPurchaseDidUpdate = Notification.Name("revenue cast purchase did update")
     static let superwallPurchaseDidUpdate = Notification.Name("revenue cast purchase did update")
+    static let updateInAppTracking = Notification.Name("updateInAppTracking")
 }
 
 // MARK: -  UIApplication
@@ -78,4 +79,21 @@ extension Locale {
             return current.regionCode
         }
     }
+}
+
+// MARK: - LoggerInAppPurchase
+
+struct LoggerInAppPurchase {
+    let packagetype: PackageStype
+    let transactionId: String
+    let productId: String
+    let price: Double
+    let currency: String
+    let region: String?
+    let transactionDate: Date?
+}
+
+enum PackageStype {
+    case annual
+    case lifetime
 }

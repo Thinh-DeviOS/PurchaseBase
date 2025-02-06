@@ -10,7 +10,6 @@ import RevenueCat
 
 class RevenueCastService {
     static let shared = RevenueCastService()
-    typealias Completion = (Bool, RevenueCastError?) -> Void
     
     private let notifiCenter = NotificationCenter.default
     private let userDefaultName: String = ".revenueCat" // To do changed default name
@@ -32,29 +31,44 @@ class RevenueCastService {
         getCustomerInfo(entitId: entitId)
     }
     
-    func purchase(_ package: RevenueCat.Package, entitId: String, completion: @escaping Completion) {
-        checkIsWaiting(completion: completion)
-        Purchases.shared.purchase(package: package) { store, info, error, _ in
-            self.resultsHandler(info: info, package: nil, store: store, error: error, completion: completion)
-        }
-    }
-    
-    func restorePurchases(entitId: String, completion: @escaping Completion) {
-        checkIsWaiting(completion: completion)
-        Purchases.shared.restorePurchases { info, error in
-            self.resultsHandler(info: info, package: nil, store: nil, error: error, completion: completion)
-        }
-    }
-    
-    func getPackages(_ offeringIdentifier: String, completion: @escaping ([Package], RevenueCastError?) -> Void) {
-        Purchases.shared.getOfferings { offering, error in
-            if let error {
-                completion([], .error(error))
-            } else {
-                let packages: [Package] = offering?.offering(identifier: offeringIdentifier)?.availablePackages ?? []
-                completion(packages, nil)
+    func purchase(_ package: RevenueCat.Package, entitId: String) async -> (Bool, RevenueCastError?) {
+        guard !isWaiting else { return (false, .waiting) }
+        return await withCheckedContinuation { continuation in
+            isWaiting = true
+            Purchases.shared.purchase(package: package) { store, info, error, _ in
+                Task {
+                    let (grant, error) = await self.resultsHandler(info: info, package: package, store: store, error: error)
+                    continuation.resume(returning: (grant, error))
+                }
             }
         }
+    }
+    
+    func restorePurchases(entitId: String) async -> (Bool, RevenueCastError?) {
+        guard !isWaiting else { return (false, .waiting) }
+        return await withCheckedContinuation { continuation in
+            isWaiting = true
+            Purchases.shared.restorePurchases { info, error in
+                Task {
+                    let (grant, error) = await self.resultsHandler(info: info, package: nil, store: nil, error: error)
+                    continuation.resume(returning: (grant, error))
+                }
+            }
+        }
+    }
+    
+    func getPackages(_ offeringIdentifier: String) async -> ([Package], RevenueCastError?) {
+        return await withCheckedContinuation { continuation in
+            Purchases.shared.getOfferings { offering, error in
+                if let error {
+                    continuation.resume(returning: ([], .error(error)))
+                } else {
+                    let packages: [Package] = offering?.offering(identifier: offeringIdentifier)?.availablePackages ?? []
+                    continuation.resume(returning: (packages, nil))
+                }
+            }
+        }
+
     }
 }
 
@@ -93,26 +107,18 @@ extension RevenueCastService {
         }
     }
     
-    private func checkIsWaiting(completion: @escaping Completion) {
-        guard !isWaiting else {
-            completion(false, .waiting)
-            return
-        }
-        isWaiting = true
-    }
-    
-    private func resultsHandler(info: CustomerInfo?, package: RevenueCat.Package?, store: StoreTransaction?, error: PublicError?, completion: @escaping Completion) {
+    private func resultsHandler(info: CustomerInfo?, package: RevenueCat.Package?, store: StoreTransaction?, error: PublicError?) async -> (Bool, RevenueCastError?) {
         self.isWaiting = false
         if let error {
-            completion(false, .error(error))
+            return (false, .error(error))
         } else
         if let info, info.entitlements.all[entitId]?.isActive == true {
             if let store, let package {
                 updateInAppTracking(with: store, package: package)
             }
-            completion(true, nil)
+            return (true, nil)
         } else {
-            completion(false, nil)
+            return (false, nil)
         }
     }
     
@@ -127,23 +133,27 @@ extension RevenueCastService {
         let transDate = transaction?.purchaseDate
         
         if package.packageType == .lifetime {
-            AdjustManager.shared.loggerInAppPurchase(
+            let logger = LoggerInAppPurchase(
+                packagetype: .lifetime,
                 transactionId: transactionId,
-                price: price,
                 productId: productId,
+                price: price,
                 currency: currencyCode,
                 region: regionIdentifier,
                 transactionDate: transDate
             )
+            notifiCenter.post(name: .updateInAppTracking, object: logger)
         } else {
-            AdjustManager.shared.loggerInAppSubscription(
+            let logger = LoggerInAppPurchase(
+                packagetype: .annual,
                 transactionId: transactionId,
-                price: price,
                 productId: productId,
+                price: price,
                 currency: currencyCode,
                 region: regionIdentifier,
                 transactionDate: transDate
             )
+            notifiCenter.post(name: .updateInAppTracking, object: logger)
         }
     }
 }
