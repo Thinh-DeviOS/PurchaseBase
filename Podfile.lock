@@ -1,0 +1,24 @@
+PODS:
+  - RevenueCat (5.14.2)
+  - Superscript (0.1.16)
+  - SuperwallKit (3.12.0):
+    - Superscript (= 0.1.16)
+
+DEPENDENCIES:
+  - RevenueCat (~> 5.2)
+  - SuperwallKit (~> 3.0)
+
+SPEC REPOS:
+  trunk:
+    - RevenueCat
+    - Superscript
+    - SuperwallKit
+
+SPEC CHECKSUMS:
+  RevenueCat: 352ba3a3d8acf4e1b77ccdca6b4d811e5bcf4135
+  Superscript: 17e2597de5e1ddfa132e217b33d1eb8eddf13e0f
+  SuperwallKit: 9abe07053249c596af9875a3b857236068a79edc
+
+PODFILE CHECKSUM: 2ea5e59a94a1b7901e1111a85e27d4b62d44380a
+
+COCOAPODS: 1.16.2

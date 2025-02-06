@@ -1,0 +1,3 @@
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/RevenueCat.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Superscript.framework
+${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SuperwallKit.framework

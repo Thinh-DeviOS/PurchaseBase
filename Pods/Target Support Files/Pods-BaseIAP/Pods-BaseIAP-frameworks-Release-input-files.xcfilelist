@@ -1,0 +1,4 @@
+${PODS_ROOT}/Target Support Files/Pods-BaseIAP/Pods-BaseIAP-frameworks.sh
+${BUILT_PRODUCTS_DIR}/RevenueCat/RevenueCat.framework
+${BUILT_PRODUCTS_DIR}/Superscript/Superscript.framework
+${BUILT_PRODUCTS_DIR}/SuperwallKit/SuperwallKit.framework
