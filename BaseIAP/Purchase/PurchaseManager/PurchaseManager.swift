@@ -47,7 +47,7 @@ class PurchaseManager: ObservableObject {
     }
     
     func updateInAppTracking() {
-        Publishers.MergeMany(notifiCenter.publisher(for: .updateInAppTracking))
+        notifiCenter.publisher(for: .updateInAppTracking)
             .map { $0.object as? LoggerInAppPurchase }
             .sink { logger in
                 // update In App Tracking
