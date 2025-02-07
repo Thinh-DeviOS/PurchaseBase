@@ -31,7 +31,7 @@ class RevenueCastService {
         getCustomerInfo(entitId: entitId)
     }
     
-    func purchase(_ package: RevenueCat.Package, entitId: String) async -> (Bool, RevenueCastError?) {
+    func purchase(_ package: RevenueCat.Package, entitId: String) async -> (isPurchase: Bool, error: RevenueCastError?) {
         guard !isWaiting else { return (false, .waiting) }
         return await withCheckedContinuation { continuation in
             isWaiting = true
@@ -44,7 +44,7 @@ class RevenueCastService {
         }
     }
     
-    func restorePurchases(entitId: String) async -> (Bool, RevenueCastError?) {
+    func restorePurchases(entitId: String) async -> (isPurchase: Bool, error: RevenueCastError?) {
         guard !isWaiting else { return (false, .waiting) }
         return await withCheckedContinuation { continuation in
             isWaiting = true
@@ -57,7 +57,7 @@ class RevenueCastService {
         }
     }
     
-    func getPackages(_ offeringIdentifier: String) async -> ([Package], RevenueCastError?) {
+    func getPackages(_ offeringIdentifier: String) async -> (packages: [Package], error: RevenueCastError?) {
         return await withCheckedContinuation { continuation in
             Purchases.shared.getOfferings { offering, error in
                 if let error {
@@ -107,7 +107,7 @@ extension RevenueCastService {
         }
     }
     
-    private func resultsHandler(info: CustomerInfo?, package: RevenueCat.Package?, store: StoreTransaction?, error: PublicError?) async -> (Bool, RevenueCastError?) {
+    private func resultsHandler(info: CustomerInfo?, package: RevenueCat.Package?, store: StoreTransaction?, error: PublicError?) async -> (isPurchase: Bool, error: RevenueCastError?) {
         self.isWaiting = false
         if let error {
             return (false, .error(error))

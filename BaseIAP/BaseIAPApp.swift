@@ -12,6 +12,9 @@ struct BaseIAPApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    PurchaseManager.shared.configure()
+                }
         }
     }
 }
